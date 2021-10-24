@@ -12,7 +12,7 @@ def showimg_first(img, title=None):
     plt.show()
 
 
-def showimg(img1, img2, img3, img4):
+def showimg(img1, img2, img3, img4, title=None):
     plt.subplot(1, 4, 1)
     plt.imshow(img1, cmap='gray')
     plt.axis('off')
@@ -27,7 +27,8 @@ def showimg(img1, img2, img3, img4):
     plt.subplot(1, 4, 4)
     plt.imshow(img4, cmap='gray')
     plt.axis('off')
-    plt.title('')
+    if title is not None:
+        plt.title(title)
     plt.show()
 
 
@@ -40,7 +41,7 @@ def open_image(filename):
         return
 
 
-# нормализация (линейоное растяжение)
+# нормализация(линейоное растяжение)
 def normalization(image_laplacian):
     Imax = np.max(image_laplacian)
     Imin = np.min(image_laplacian)
@@ -58,12 +59,29 @@ def image_enhancement(image_original):
     new_image_laplacian = normalization(image_laplacian)
 
     # В: Повышение резкости = image_original + new_image_laplacian
-    image_addition = cv2.add(image_original, new_image_laplacian)
+    image_addition = cv2.addWeighted(image_original, 1, new_image_laplacian, 1, 0.0)
 
     # Г: Применение градиентного оператора Собела к оригинальному изображению
-    image_sobely = cv2.convertScaleAbs(image_original)
-    showimg(image_original, new_image_laplacian, image_addition, image_sobely)
+    image_sobelx = cv2.Sobel(image_original, cv2.CV_64F, 1, 0, ksize=3)
+    image_sobely = cv2.Sobel(image_original, cv2.CV_64F, 0, 1, ksize=3)
+    image_sobelx = cv2.convertScaleAbs(image_sobelx)
+    image_sobely = cv2.convertScaleAbs(image_sobely)
+    image_sobelxy = cv2.addWeighted(image_sobelx, 1, image_sobely, 1, 0)
 
+    # Д:
+    img_mask = cv2.blur(image_sobelxy, (5, 5))
+
+    # E:
+    img_mask1 = cv2.bitwise_and(image_addition, img_mask)
+
+    # Ж:
+    img_mask2 = cv2.addWeighted(image_original, 1, img_mask1, 0.4, 1.0) #cv2.add(image_original, img_mask1)
+    # З:
+    gamma = 0.5
+    img_mask3 = np.array(255 * (img_mask2 / 255) ** gamma, dtype='uint8')
+
+    showimg(image_original, new_image_laplacian, image_addition, image_sobelxy)
+    showimg(img_mask, img_mask1, img_mask2, img_mask3)
 
 
 if __name__ == '__main__':
